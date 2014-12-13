@@ -62,6 +62,8 @@ skip_recipes = {
     advanced_oil_processing=true, -- same results as basic-oil-processing if we ignore quantity
 }
 
+local targets = arg
+
 skip_items = {
 	biter_spawner=true,
 	computer=true,
@@ -295,11 +297,109 @@ dofile("base/prototypes/recipe/equipment.lua")
 dofile("base/prototypes/recipe/furnace-recipe.lua")
 dofile("base/prototypes/recipe/module.lua")
 
+is_needed_for_recursion_breaker = {}
+
+function get_name(table)
+  if table["name"] then
+    return table["name"]
+  else
+    return table[1]
+  end
+end
+
+function is_recipe_needed_for(name, target)
+  for d=1,#data do
+    if data[d]["name"] == name then
+      if data[d]["results"] then
+        for r=1,#data[d]["results"] do
+          local res_name = get_name(data[d]["results"][r])
+          if is_needed_for(res_name, target) then
+            return true
+          end
+        end
+      else
+        if is_needed_for(data[d]["result"], target) then
+          return true
+        end
+      end
+    end
+  end
+  return false
+end
+
+function is_needed_for(name, target)
+  for t=1,#natural_resources do
+    if natural_resources[t] == target then
+      return false -- natural resources need nothing. NOTHING! (break cycles involving oil barrel, mostly)
+    end
+  end
+  
+  local key = name.."#"..target
+  if is_needed_for_recursion_breaker[key] then
+    return false
+  end
+  is_needed_for_recursion_breaker[key] = true
+  
+  -- print("do we need "..name.." for "..target.."?")
+  if name == target then
+    -- print("  "..name.." for "..target..": yes 1")
+    is_needed_for_recursion_breaker[key] = nil
+    return true
+  else
+    for d=1,#data do
+      local produces_target = false
+      if data[d]["results"] then
+        for r=1,#data[d]["results"] do
+          local res_name = get_name(data[d]["results"][r])
+          if res_name == target then
+            produces_target = true
+            break
+          end
+        end
+      else
+        if data[d]["result"] == target then
+          produces_target = true
+        end
+      end
+      
+      if produces_target then
+        -- print(data[d]["name"].." produces "..target)
+        for r=1,#(data[d]["ingredients"]) do
+          local ingred_name = get_name(data[d]["ingredients"][r])
+          if is_needed_for(name, ingred_name) then
+            -- print("  "..name.." for "..target..": yes 2")
+            is_needed_for_recursion_breaker[key] = nil
+            return true
+          end
+        end
+        -- print("  "..name.." for "..target..": no 1")
+        is_needed_for_recursion_breaker[key] = nil
+        return false
+      end
+    end
+    -- print("  "..name.." for "..target..": no 2")
+    is_needed_for_recursion_breaker[key] = nil
+    return false
+  end
+end
+
 -- produce a graph link for each ingredient of each recipe
 for d=1,#data do
-    if(skip_recipes[data[d]["name"]:gsub("-","_")]) then
-    	
-    else
+    local showme = true
+    if(skip_recipes[data[d]["name"]:gsub("-","_")]) then showme = false end
+    
+    if targets then
+      local show_any = false
+      for r=1,#targets do
+        if is_recipe_needed_for(data[d]["name"], targets[r]) then
+          show_any = true
+          break
+        end
+      end
+      if not show_any then showme = false end
+    end
+    
+    if showme then
         if(data[d]["results"] ~= nil) then
             -- fluids or other recipes with multiple results
             for r=1,#(data[d]["results"]) do
