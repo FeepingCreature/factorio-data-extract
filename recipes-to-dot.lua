@@ -181,8 +181,8 @@ for i,name_file in pairs(name_files) do
                 pretty_names[codename]=name
             end
         end
+        file:close();
     end
-    file:close()
 end
 
 
@@ -193,7 +193,10 @@ end
 -- printed output looks like this:
 --   stone_brick [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0"><TR><TD><IMG SCALE="true" SRC='base/graphics/icons/stone-brick.png' /></TD></TR><TR><TD>Stone<BR/>Brick</TD></TR></TABLE>>];
 
-function print_node (result, icon, attributes)
+-- stores 
+local dot_item_text = {}
+
+function format_node (result, icon, attributes)
     -- skip items with no icon
     if(
         icon ~= nil
@@ -221,13 +224,48 @@ function print_node (result, icon, attributes)
         out = out .. "</TABLE>>"
         out = out .. serialize_options(attributes)
         out = out .. "];"
-        print(out)
+        dot_item_text[result] = out;
     end
 end
 
+function print_nodes()
+  grouped = {}
+  for k,v in pairs(dot_item_text) do
+    local name = k
+    local text = v
+    local cluster = "default"
+    for t=1,#targets do
+      local target = targets[t]
+      if name == target then
+        cluster = "targets"
+        break
+      end
+    end
+    for t=1,#natural_resources do
+      if name == natural_resources[t] then
+        cluster = "resource"
+        break
+      end
+    end
+    
+    if not grouped[cluster] then grouped[cluster] = {} end
+    table.insert(grouped[cluster], text)
+    
+  end
+  for k,v in pairs(grouped) do
+    if (k == "default") then
+      for t=1,#v do print(v[t]) end
+    else
+      print("subgraph cluster_"..k.." {")
+      print("style=invis")
+      for t=1,#v do print(v[t]) end
+      print("}")
+    end
+  end
+end
 
 if(include_natural_resources_node) then
-	print_node('natural_resources','__base__/graphics/icons/coin.png',{style='invis'})
+	format_node('natural_resources','__base__/graphics/icons/coin.png',{style='invis'})
     for i,r in pairs(natural_resources) do
     	-- TODO: stop using this icon
         print_graph_link(r,'natural-resources','""',{style='invis'})
@@ -245,7 +283,7 @@ function data.extend (target, new_data)
         target[new_data[i]["name"]] = new_data[i]
         if(skip_items[new_data[i]["name"]:gsub("-","_")]) then
         else
-			print_node(new_data[i]["name"],new_data[i]["icon"])
+			format_node(new_data[i]["name"],new_data[i]["icon"])
 		end
     end
 end
@@ -296,6 +334,8 @@ dofile("base/prototypes/recipe/demo-recipe.lua")
 dofile("base/prototypes/recipe/equipment.lua")
 dofile("base/prototypes/recipe/furnace-recipe.lua")
 dofile("base/prototypes/recipe/module.lua")
+
+print_nodes()
 
 is_needed_for_recursion_breaker = {}
 
@@ -403,12 +443,12 @@ for d=1,#data do
         if(data[d]["results"] ~= nil) then
             -- fluids or other recipes with multiple results
             for r=1,#(data[d]["results"]) do
-                -- print_node(data[d]["results"][r]["name"],item_info[result]["icon"])
+                -- format_node(data[d]["results"][r]["name"],item_info[result]["icon"])
                 print_graph_links(data[d]["results"][r]["name"],data[d]["ingredients"])
             end
         else
             -- normal recipes, one result
-            -- print_node(data[d]["result"],item_info[result]["icon"])
+            -- format_node(data[d]["result"],item_info[result]["icon"])
             print_graph_links(data[d]["result"],data[d]["ingredients"])
         end
     end
