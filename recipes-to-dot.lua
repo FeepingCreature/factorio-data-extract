@@ -6,17 +6,17 @@
 -- https://en.wikipedia.org/wiki/DOT_(graph_description_language)
 
 include_natural_resources_node = false
-render_item_names = false
+render_item_names = true
 
 node_options = {
     -- size is specified in inches, see graph_options.dpi for reference
-    fixedsize='true',
-    width='1',
-    height='1',
-    fontsize=20,
+    -- fixedsize='true',
+    -- width='1',
+    -- height='1',
+    fontsize=14,
     labelloc='b',
     shape='record',
-    penwidth=0,
+    -- penwidth=0,
     -- margin=0.5,
 }
 edge_options = {
@@ -28,19 +28,22 @@ edge_options = {
 }
 graph_options = {
     -- some DOT measurements are in pixels, some in inches
-    dpi=32,
+    --dpi=32,
     -- modes: major, KK, hier, ipsep, spring, maxent
-    mode='hier',
+    -- mode='hier',
     -- models: circuit, subset, mds
-    model='subset',
-    overlap='prism',
+    -- model='subset',
+    overlap='false',
+    -- overlap='prism',
     -- packMode='node',
     -- ratio=0.75,
-    sep='+32',
+    -- sep='+32',
     -- splines: spline, line, ortho, polyline, curved
-    splines='spline',
+    -- splines='spline',
+    splines='ortho',
+    -- splines='polyline',
     levelsgap=10000,
-    concentrate='false',
+    -- concentrate='true',
 }
 if(include_natural_resources_node) then
 	graph_options.root="natural_resources"
@@ -213,15 +216,18 @@ function format_node (result, icon, attributes)
         out = out .. string.gsub(result,"-","_")
         out = out .. " [label=<"
         out = out .. "<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"0\">"
-        out = out .. "<TR><TD><IMG SCALE=\"true\" SRC='"
+        out = out .. "<TR><TD>"
+        out = out .. "<IMG SCALE=\"true\" SRC='"
         out = out .. string.gsub(string.gsub(icon,"__core__","core"),"__base__","base")
-        out = out .. "' /></TD></TR>"
+        out = out .. "' />"
+        out = out .. "</TD></TR>"
         if ( render_item_names ) then
-        	out = out .. "<TR><TD>"
+            out = out .. "<TR><TD>"
             out = out .. string.gsub(pretty_names[result] or result," ","<BR/>")
             out = out .. "</TD></TR>"
         end
-        out = out .. "</TABLE>>"
+        out = out .. "</TABLE>"
+        out = out .. ">"
         out = out .. serialize_options(attributes)
         out = out .. "];"
         dot_item_text[result] = out;
